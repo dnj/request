@@ -92,8 +92,11 @@ class Request extends Model
         'response'   => 'array',
     ];
 
-    public function setResponse(array $response): bool
+    public function setResponse(array $response, bool $keepOld = false): bool
     {
+        if ($keepOld) {
+            $response = array_merge((array)$this->response ?? [], $response);
+        }
         $this->response = $response;
         return $this->save();
     }
