@@ -1,0 +1,23 @@
+{
+    "name": "dnj/request",
+    "description": "A manager for laravel jobs",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "dnj\\Request\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^7.3|^8.0"
+    },
+    "require-dev": {
+        "nunomaduro/larastan": "^0.7.12"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "DNJ LTD",
+            "email": "info@jeyserver.com"
+        }
+    ]
+}
