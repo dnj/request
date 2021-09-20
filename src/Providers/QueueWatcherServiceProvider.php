@@ -38,8 +38,10 @@ class QueueWatcherServiceProvider extends ServiceProvider
             $realJob = unserialize($payload["data"]["command"]);
 
             $request = $realJob->getRequest();
-            $request->status = Request::COMPLETED;
-            $request->save();
+            if ($request->status != Request::FAILED) {
+                $request->status = Request::COMPLETED;
+                $request->save();
+            }
         });
           
         Queue::failing(static function(JobFailed $event): void {
