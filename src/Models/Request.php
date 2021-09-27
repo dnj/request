@@ -2,49 +2,43 @@
 
 namespace dnj\Request\Models;
 
-use InvalidArgumentException;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Queue;
 use dnj\Request\Contracts\Queue\IRequestableJob;
+use Illuminate\Container\Container;
+use Illuminate\Database\Eloquent\Model;
+use InvalidArgumentException;
 
 /**
- * @property array<mixed>|array<string,mixed> $options
- * @property array<mixed>|array<string,mixed> $response
+ * @property array<mixed>                  $options
+ * @property array<mixed>                  $response
+ * @property class-string<IRequestableJob> $type
+ * @property RequestStatus                 $status
+ * @property string|null                   $job_uuid
  */
 class Request extends Model
 {
-    const NO_STARTED = 1;
-    const RUNNING = 2;
-    const COMPLETED = 3;
-    const FAILED = 4;
-
-    const STATUSES = [
-        self::NO_STARTED,
-        self::RUNNING,
-        self::COMPLETED,
-        self::FAILED,
-    ];
-
+    /**
+     * @param class-string<IRequestableJob> $jobClass
+     * @param array<mixed>                  $options
+     */
     public static function pushJob(string $jobClass, array $options = []): self
     {
         if (!class_exists($jobClass)) {
-            throw new InvalidArgumentException('Given class not exists! class: ' . $jobClass);
+            throw new InvalidArgumentException('Given class not exists! class: '.$jobClass);
         }
-
-        $model = new self();
 
         $job = new $jobClass();
         if (!($job instanceof IRequestableJob)) {
-            throw new InvalidArgumentException('Given job class should be implement of: ' . IRequestableJob::class);
+            throw new InvalidArgumentException('Given job class should be implement of: '.IRequestableJob::class);
         }
 
+        $model = new self();
         $model->type = $jobClass;
         $model->options = $options;
         $model->save();
         $job->setRequest($model);
 
-        Queue::push($job);
+        Container::getInstance()->make('queue')->push($job);
+
         return $model;
     }
 
@@ -52,10 +46,10 @@ class Request extends Model
     {
         parent::boot();
         static::creating(static function (Request $model): void {
-            if (!$model->status) {
-                $model->status = self::NO_STARTED;
+            if (!isset($model->status)) {
+                $model->status = RequestStatus::NOT_STARTED();
             }
-            if (!$model->options) {
+            if (!isset($model->options)) {
                 $model->options = [];
             }
         });
@@ -71,7 +65,7 @@ class Request extends Model
     /**
      * The attributes that are mass assignable.
      *
-     * @var array
+     * @var array<string>
      */
     protected $fillable = [
         'id',
@@ -85,31 +79,24 @@ class Request extends Model
     /**
      * The attributes that should be cast to native types.
      *
-     * @var array
+     * @var array<string,string>
      */
     protected $casts = [
-        'options'   => 'json',
-        'response'   => 'array',
+        'status' => RequestStatus::class,
+        'options' => 'json',
+        'response' => 'array',
     ];
 
+    /**
+     * @param array<mixed> $response
+     */
     public function setResponse(array $response, bool $keepOld = false): bool
     {
         if ($keepOld) {
-            $response = array_merge((array)$this->response ?? [], $response);
+            $response = array_merge((array) $this->response ?? [], $response);
         }
         $this->response = $response;
-        return $this->save();
-    }
 
-    public function getHumanReadableStatus(): ?string
-    {
-        switch ($this->status)
-        {
-            case self::NO_STARTED: return 'NO_STARTED';
-            case self::RUNNING: return 'RUNNING';
-            case self::COMPLETED: return 'COMPLETED';
-            case self::FAILED: return 'FAILED';
-        }
-        return null;
+        return $this->save();
     }
 }

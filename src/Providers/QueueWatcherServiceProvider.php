@@ -2,69 +2,61 @@
 
 namespace dnj\Request\Providers;
 
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Queue\Events\{JobFailed, JobProcessing, JobProcessed};
 use dnj\Request\Contracts\Queue\IRequestableJob;
-use dnj\Request\Models\Request;
+use dnj\Request\Models\RequestStatus;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\ServiceProvider;
 
 class QueueWatcherServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        Queue::before(static function(JobProcessing $event): void {
+        $queue = $this->app->make('queue');
+        $queue->before(static function (JobProcessing $event): void {
             if (!is_a($event->job->resolveName(), IRequestableJob::class, true)) {
                 return;
             }
             $payload = $event->job->payload();
 
             /** @var IRequestableJob $realJob */
-            $realJob = unserialize($payload["data"]["command"]);
+            $realJob = unserialize($payload['data']['command']);
 
             $request = $realJob->getRequest();
             $request->job_uuid = $event->job->uuid();
-            $request->status = Request::RUNNING;
+            $request->status = RequestStatus::RUNNING();
             $request->save();
         });
-          
-        Queue::after(static function(JobProcessed $event): void {
+
+        $queue->after(static function (JobProcessed $event): void {
             if (!is_a($event->job->resolveName(), IRequestableJob::class, true)) {
                 return;
             }
             $payload = $event->job->payload();
 
             /** @var IRequestableJob $realJob */
-            $realJob = unserialize($payload["data"]["command"]);
+            $realJob = unserialize($payload['data']['command']);
 
             $request = $realJob->getRequest();
-            if ($request->status != Request::FAILED) {
-                $request->status = Request::COMPLETED;
+            if (!$request->status->equals(RequestStatus::FAILED())) {
+                $request->status = RequestStatus::COMPLETED();
                 $request->save();
             }
         });
-          
-        Queue::failing(static function(JobFailed $event): void {
+
+        $queue->failing(static function (JobFailed $event): void {
             if (!is_a($event->job->resolveName(), IRequestableJob::class, true)) {
                 return;
             }
             $payload = $event->job->payload();
 
             /** @var IRequestableJob $realJob */
-            $realJob = unserialize($payload["data"]["command"]);
+            $realJob = unserialize($payload['data']['command']);
 
             $request = $realJob->getRequest();
-            $request->status = Request::FAILED;
+            $request->status = RequestStatus::FAILED();
             $request->save();
         });
-    }
-    /**
-     * Register any application services.
-     *
-     * @return void
-     */
-    public function register()
-    {
-        
     }
 }

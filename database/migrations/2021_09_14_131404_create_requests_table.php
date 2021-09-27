@@ -17,8 +17,8 @@ class CreateRequestsTable extends Migration
             $table->id();
             $table->uuid('job_uuid')->nullable();
             $table->string('type', 1024);
-            $table->text("options");
-            $table->text("response")->nullable();
+            $table->text('options');
+            $table->text('response')->nullable();
             $table->unsignedTinyInteger('status');
             $table->timestamps();
         });
