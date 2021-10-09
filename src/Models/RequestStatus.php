@@ -2,7 +2,7 @@
 
 namespace dnj\Request\Models;
 
-use Spatie\Enum\Enum;
+use Spatie\Enum\Laravel\Enum;
 
 /**
  * @method static self NOT_STARTED()
