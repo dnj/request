@@ -46,9 +46,7 @@ class Request extends Model
     {
         parent::boot();
         static::creating(static function (Request $model): void {
-            if (!isset($model->status)) {
-                $model->status = RequestStatus::NOT_STARTED();
-            }
+            $model->status = RequestStatus::NOT_STARTED();
             if (!isset($model->options)) {
                 $model->options = [];
             }
@@ -93,7 +91,7 @@ class Request extends Model
     public function setResponse(array $response, bool $keepOld = false): bool
     {
         if ($keepOld) {
-            $response = array_merge((array) $this->response ?? [], $response);
+            $response = array_replace((array) $this->response ?? [], $response);
         }
         $this->response = $response;
 
